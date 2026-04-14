@@ -1,7 +1,7 @@
 <template>
 <div>
 <div class="phone">
-<div class="sb"><div class="notch"></div><span class="stt" id="sb-time">9:41</span><div style="display:flex;align-items:center;gap:6px;z-index:102"><button id="lang-btn" @click="toggleLang()" style="background:#F0F0EC;border:none;border-radius:7px;padding:3px 8px;font-size:10px;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif;color:#111;letter-spacing:.02em">{{ lang==='en'?'हिं':'EN' }}</button><span class="sic">●●● 🔋</span></div></div>
+<div class="sb"><div class="notch"></div><span class="stt">{{ clockTime || '9:41' }}</span><div style="display:flex;align-items:center;gap:6px;z-index:102"><button id="lang-btn" @click="toggleLang()" style="background:#F0F0EC;border:none;border-radius:7px;padding:3px 8px;font-size:10px;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif;color:#111;letter-spacing:.02em">{{ lang==='en'?'हिं':'EN' }}</button><span class="sic">●●● 🔋</span></div></div>
 
 <!-- ===== LANGUAGE SELECT ===== -->
 <div class="scr" :class="{on: screen==='langselect'}" style="background:linear-gradient(160deg,#0B2E6E,#071B45)">
@@ -50,7 +50,7 @@
     </div>
     <button class="splash-btn" @click="go('signup')">{{ t('createAccount') }}</button>
     <button class="splash-btn outline" @click="go('login')">{{ t('alreadyHaveAccount') }}</button>
-    <div style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.3);cursor:pointer" @click="isLoggedIn=true;go('home')">{{ t('continueAsGuest') }}</div>
+    <div style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.3);cursor:pointer" @click="isGuest=true;go('home')">{{ t('continueAsGuest') }}</div>
   </div>
 </div>
 
@@ -62,7 +62,7 @@
     <div class="auth-subtitle">{{ t('joinPetOwners') }}</div>
   </div>
   <div class="auth-body">
-    <div class="error-msg" :style="{display: suErr?'block':'none'}">{{ t('fillFieldsError') }}</div>
+    <div class="error-msg" :style="{display: suErr?'block':'none'}">{{ suErrMsg || t('fillFieldsError') }}</div>
     <label class="inp-label">{{ t('fullName') }}</label>
     <input class="inp" v-model="suName" type="text" placeholder="Your name">
     <label class="inp-label">{{ t('phoneNumber') }}</label>
@@ -92,13 +92,13 @@
     <div class="auth-subtitle">{{ t('signInToAccount') }}</div>
   </div>
   <div class="auth-body">
-    <div class="error-msg" :style="{display: liErr?'block':'none'}">{{ t('loginError') }}</div>
+    <div class="error-msg" :style="{display: liErr?'block':'none'}">{{ liErrMsg || t('loginError') }}</div>
     <div class="success-msg" :style="{display: liSuc?'block':'none'}">{{ t('loginSuccess') }}</div>
     <label class="inp-label">{{ t('emailOrPhone') }}</label>
     <input class="inp" v-model="liEmail" type="email" placeholder="you@email.com">
     <label class="inp-label">{{ t('password') }}</label>
     <input class="inp" v-model="liPass" type="password" placeholder="Your password">
-    <div class="forgot" @click="toast('📧 Reset link sent to your email!')">{{ t('forgotPassword') }}</div>
+    <div class="forgot" @click="toast('Password reset is not available yet. Coming soon!')">{{ t('forgotPassword') }}</div>
     <button class="auth-btn" @click="doLogin()">{{ t('signInBtn') }}</button>
     <div class="divider"><span>{{ t('orContinueWith') }}</span></div>
     <button class="soc-btn" @click="socialLogin('Google')"><span style="font-size:18px">G</span> Continue with Google</button>
@@ -133,7 +133,7 @@
         <div><div class="sel-name">{{ t(bt.nameKey) }}</div><div class="sel-desc">{{ t(bt.descKey) }}</div></div>
         <div class="sel-check"></div>
       </div>
-      <button class="auth-btn" @click="bizStep=2">{{ t('continueBtn') }}</button>
+      <button class="auth-btn" @click="validateBizStep1()">{{ t('continueBtn') }}</button>
     </div>
     <!-- Step 2 -->
     <div v-show="bizStep===2">
@@ -149,7 +149,7 @@
       <input class="inp" v-model="bizArea" type="text" placeholder="e.g. Gaur City, Sector 16">
       <label class="inp-label">{{ t('yearsExperience') }}</label>
       <input class="inp" v-model="bizExp" type="number" placeholder="e.g. 3">
-      <button class="auth-btn" @click="bizStep=3">{{ t('continueBtn') }}</button>
+      <button class="auth-btn" @click="validateBizStep2()">{{ t('continueBtn') }}</button>
       <button class="auth-btn secondary" @click="bizStep=1">← Back</button>
     </div>
     <!-- Step 3 -->
@@ -177,7 +177,11 @@
         <div style="font-size:13px;font-weight:600;color:#1246A8">{{ t('uploadPoliceVerif') }}</div>
         <div style="font-size:11px;color:#6080B0;margin-top:3px">{{ t('earnsEliteBadge') }}</div>
       </div>
-      <button class="auth-btn" @click="bizStep=4">{{ t('continueBtn') }}</button>
+      <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;margin-top:8px">
+        <input type="checkbox" v-model="dpdpaConsent" id="dpdpa-consent" style="margin-top:3px;width:18px;height:18px;flex-shrink:0">
+        <label for="dpdpa-consent" style="font-size:11px;color:#666;line-height:1.6;cursor:pointer">I consent to Petly collecting and processing my identity documents (Aadhaar, selfie, police verification) for the sole purpose of provider verification. My documents will be stored securely and deleted upon request per India's DPDPA 2023.</label>
+      </div>
+      <button class="auth-btn" @click="validateBizStep3()">{{ t('continueBtn') }}</button>
       <button class="auth-btn secondary" @click="bizStep=2">← Back</button>
     </div>
     <!-- Step 4 -->
@@ -509,7 +513,7 @@
   <div class="actop">
     <div class="acrow">
       <div class="acav">👤</div>
-      <div><div class="acnm">{{ userName }}</div><div class="acem">{{ userEmail || 'arjun@petly.in' }}</div></div>
+      <div><div class="acnm">{{ userName }}</div><div class="acem">{{ userEmail || t('noEmailSet') }}</div></div>
     </div>
   </div>
   <div class="scroll">
@@ -523,7 +527,7 @@
       <div class="acitem" @click="toggleLang()"><div class="acicon">🌐</div><div class="aclbl">{{ t('language') }}</div><div class="acval">{{ lang==='en'?'English':'हिंदी' }}</div><div class="acarr">›</div></div>
       <div class="acitem" @click="toast('❓ Opening help...')"><div class="acicon">❓</div><div class="aclbl">{{ t('helpSupport') }}</div><div class="acarr">›</div></div>
     </div>
-    <button class="soBtn" @click="isLoggedIn=false;go('splash')">{{ t('signOut') }}</button>
+    <button class="soBtn" @click="isLoggedIn=false;isGuest=false;go('splash')">{{ t('signOut') }}</button>
   </div>
   <div class="nav">
     <div class="ni" @click="go('home')"><div class="ni-i">🏠</div><div class="ni-l">{{ t('navHome') }}</div></div>
@@ -542,7 +546,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import '@fontsource/sora/400.css'
+import '@fontsource/sora/600.css'
+import '@fontsource/sora/700.css'
+import '@fontsource/sora/800.css'
+import '@fontsource/dm-sans/400.css'
+import '@fontsource/dm-sans/500.css'
+import '@fontsource/dm-sans/600.css'
+import '@fontsource/dm-sans/700.css'
 
 // ── STATE ──
 const screen = ref('langselect')
@@ -555,15 +567,17 @@ const userEmail = ref('')
 const toastMsg = ref('')
 const searchQ = ref('')
 const activeFilter = ref('all')
+const isGuest = ref(false)
 
 // Auth
-const suName = ref(''), suPhone = ref(''), suEmail = ref(''), suPass = ref(''), suErr = ref(false)
-const liEmail = ref(''), liPass = ref(''), liErr = ref(false), liSuc = ref(false)
+const suName = ref(''), suPhone = ref(''), suEmail = ref(''), suPass = ref(''), suErr = ref(false), suErrMsg = ref('')
+const liEmail = ref(''), liPass = ref(''), liErr = ref(false), liSuc = ref(false), liErrMsg = ref('')
 
 // Business
 const bizStep = ref(1)
 const bizSuccess = ref(false)
 const bizName = ref(''), bizPhone = ref(''), bizEmail = ref(''), bizArea = ref(''), bizExp = ref('')
+const dpdpaConsent = ref(false)
 const selectedPlan = ref('feat')
 const bizTypes = ref([
   { icon:'🐕‍🦺', nameKey:'dogWalkerSitter', descKey:'walkSitBoard', selected:false },
@@ -691,7 +705,7 @@ const strings = {
     community:'Community', communitySub:'Pet owners in Greater Noida',
     callNearestVet:'Call the nearest emergency vet right now',
     notifications:'Notifications',
-    myPets:'My Pets', myBookings:'My Bookings', payments:'Payments', settings:'Settings', language:'Language', helpSupport:'Help & Support', signOut:'Sign Out',
+    myPets:'My Pets', myBookings:'My Bookings', payments:'Payments', settings:'Settings', language:'Language', helpSupport:'Help & Support', signOut:'Sign Out', noEmailSet:'No email set',
     listBusiness:'List your business', joinAsPartner:'Join Petly as a verified partner — first 3 months free',
     threeMonthsFree:'3 months free', twentyFourHrApproval:'24hr approval', moreBookings:'More bookings',
     whatTypeBusiness:'What type of business?', selectAllApply:'Select all that apply to you',
@@ -719,6 +733,10 @@ const strings = {
     whatHappensNext:'What happens next', verifyDocs:'We verify your documents', whatsappConfirm:'WhatsApp confirmation',
     profileGoesLive:'Your profile goes live', startGettingBookings:'Start getting bookings!',
     goToDashboard:'Go to Home →',
+    nameRequired:'Please enter your name.',
+    invalidEmail:'Please enter a valid email address.',
+    invalidPhone:'Please enter a valid Indian phone number.',
+    consentRequired:'You must agree to the privacy policy to continue.',
   },
   hi: {
     welcomeTitle:'Petly में आपका स्वागत है', welcomeSub:'ग्रेटर नोएडा का ऑल-इन-वन पेट केयर प्लेटफ़ॉर्म। सत्यापित वॉकर, ग्रूमर, वेट और स्टोर आपके पास।',
@@ -754,7 +772,7 @@ const strings = {
     community:'समुदाय', communitySub:'ग्रेटर नोएडा के पेट मालिक',
     callNearestVet:'अभी नज़दीकी इमरजेंसी वेट को कॉल करें',
     notifications:'सूचनाएं',
-    myPets:'मेरे पेट', myBookings:'मेरी बुकिंग', payments:'भुगतान', settings:'सेटिंग्स', language:'भाषा', helpSupport:'सहायता', signOut:'साइन आउट',
+    myPets:'मेरे पेट', myBookings:'मेरी बुकिंग', payments:'भुगतान', settings:'सेटिंग्स', language:'भाषा', helpSupport:'सहायता', signOut:'साइन आउट', noEmailSet:'ईमेल सेट नहीं है',
     listBusiness:'बिज़नेस लिस्ट करें', joinAsPartner:'Petly पर सत्यापित पार्टनर बनें — 3 महीने मुफ़्त',
     threeMonthsFree:'3 महीने मुफ़्त', twentyFourHrApproval:'24 घंटे अप्रूवल', moreBookings:'अधिक बुकिंग',
     whatTypeBusiness:'बिज़नेस का प्रकार?', selectAllApply:'जो लागू हो वो चुनें',
@@ -782,12 +800,20 @@ const strings = {
     whatHappensNext:'आगे क्या होगा', verifyDocs:'हम आपके दस्तावेज़ सत्यापित करेंगे', whatsappConfirm:'WhatsApp पुष्टि',
     profileGoesLive:'आपका प्रोफ़ाइल लाइव होगा', startGettingBookings:'बुकिंग मिलना शुरू होगी!',
     goToDashboard:'होम पर जाएं →',
+    nameRequired:'कृपया अपना नाम दर्ज करें।',
+    invalidEmail:'कृपया एक वैध ईमेल पता दर्ज करें।',
+    invalidPhone:'कृपया एक वैध भारतीय फ़ोन नंबर दर्ज करें।',
+    consentRequired:'जारी रखने के लिए गोपनीयता नीति से सहमत होना आवश्यक है।',
   }
+}
+
+function sanitize(str) {
+  return String(str).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]))
 }
 
 function t(key, params) {
   let s = strings[lang.value]?.[key] || strings.en[key] || key
-  if (params) Object.keys(params).forEach(k => { s = s.replace(`{${k}}`, params[k]) })
+  if (params) Object.keys(params).forEach(k => { s = s.replace(`{${k}}`, sanitize(params[k])) })
   return s
 }
 
@@ -802,39 +828,73 @@ function toast(msg) {
   setTimeout(() => { toastMsg.value = '' }, 2500)
 }
 
+function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) }
+function validatePhone(phone) { return /^(\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}$/.test(phone.replace(/\s/g, '')) }
+function validatePassword(pass) {
+  if (pass.length < 8) return 'Password must be at least 8 characters'
+  if (!/[A-Z]/.test(pass)) return 'Password must contain an uppercase letter'
+  if (!/[a-z]/.test(pass)) return 'Password must contain a lowercase letter'
+  if (!/[0-9]/.test(pass)) return 'Password must contain a number'
+  const weak = ['password','12345678','qwerty12','abcdefgh']
+  if (weak.includes(pass.toLowerCase())) return 'This password is too common'
+  return null
+}
+
 function doSignup() {
-  if (!suName.value || !suEmail.value || !suPass.value || suPass.value.length < 8) { suErr.value = true; return }
-  suErr.value = false; userName.value = suName.value.split(' ')[0]; userEmail.value = suEmail.value; isLoggedIn.value = true
-  toast('🎉 Account created!'); go('home')
+  if (!suName.value.trim()) { suErrMsg.value = t('nameRequired'); suErr.value = true; return }
+  if (!validateEmail(suEmail.value)) { suErrMsg.value = t('invalidEmail'); suErr.value = true; return }
+  if (suPhone.value && !validatePhone(suPhone.value)) { suErrMsg.value = t('invalidPhone'); suErr.value = true; return }
+  const passErr = validatePassword(suPass.value)
+  if (passErr) { suErrMsg.value = passErr; suErr.value = true; return }
+  suErr.value = false; userName.value = sanitize(suName.value.trim().split(' ')[0]); userEmail.value = suEmail.value; isLoggedIn.value = true; isGuest.value = false
+  toast('🎉 Account created (demo mode)'); go('home')
 }
 
 function doLogin() {
-  if (!liEmail.value || !liPass.value) { liErr.value = true; return }
-  liErr.value = false; liSuc.value = true; isLoggedIn.value = true; userEmail.value = liEmail.value
+  if (!liEmail.value || !validateEmail(liEmail.value)) { liErrMsg.value = t('invalidEmail'); liErr.value = true; return }
+  if (!liPass.value || liPass.value.length < 8) { liErrMsg.value = t('loginError'); liErr.value = true; return }
+  liErr.value = false; liSuc.value = true; isLoggedIn.value = true; isGuest.value = false; userEmail.value = liEmail.value
   setTimeout(() => { liSuc.value = false; go('home') }, 800)
 }
 
-function socialLogin(provider) { toast(`🔄 Connecting to ${provider}...`); setTimeout(() => { isLoggedIn.value = true; go('home') }, 1000) }
+function socialLogin(provider) { toast(`${provider} login is not available yet. Please use email/password.`) }
 
 function goBackFromBiz() { bizStep.value > 1 && !bizSuccess.value ? bizStep.value-- : go(isLoggedIn.value ? 'home' : 'splash') }
+
+function validateBizStep1() {
+  if (!bizTypes.value.some(bt => bt.selected)) { toast('Please select at least one business type'); return }
+  bizStep.value = 2
+}
+function validateBizStep2() {
+  if (!bizName.value.trim()) { toast('Business name is required'); return }
+  if (!bizPhone.value.trim() || !validatePhone(bizPhone.value)) { toast('Valid phone number is required'); return }
+  if (!bizEmail.value.trim() || !validateEmail(bizEmail.value)) { toast('Valid email is required'); return }
+  if (!bizArea.value.trim()) { toast('Area / location is required'); return }
+  bizStep.value = 3
+}
+function validateBizStep3() {
+  if (!dpdpaConsent.value) { toast(t('consentRequired')); return }
+  bizStep.value = 4
+}
 
 function book(p) { currentProvider.value = p; selectedDate.value = 14; selectedTime.value = '09:00'; selectedPackage.value = 'Standard'; go('booking') }
 function visit(p) { currentProvider.value = p; go('visit') }
 function vetAppt(p) { currentProvider.value = p; go('booking') }
-function confirmBooking() { toast('✅ Booking confirmed!'); go('confirmed') }
+function confirmBooking() { toast('✅ Booking confirmed (demo mode)'); go('confirmed') }
 
-// Clock
-onMounted(() => {
-  const updateTime = () => {
-    const el = document.getElementById('sb-time')
-    if (el) { const d = new Date(); el.textContent = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0') }
-  }
-  updateTime(); setInterval(updateTime, 30000)
-})
+// Clock (using Vue ref, not DOM)
+const clockTime = ref('')
+let clockInterval = null
+function updateClock() {
+  const d = new Date()
+  clockTime.value = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0')
+}
+onMounted(() => { updateClock(); clockInterval = setInterval(updateClock, 30000) })
+onUnmounted(() => { if (clockInterval) clearInterval(clockInterval) })
 </script>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+/* Fonts self-hosted via @fontsource — no external CDN dependency */
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:'DM Sans',sans-serif;background:#111;display:flex;flex-direction:column;align-items:center;min-height:100vh;overflow-x:hidden}

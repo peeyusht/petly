@@ -10,8 +10,10 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "docx": "^9.6.1",
+    "@fontsource/dm-sans": "^5.2.8",
+    "@fontsource/sora": "^5.2.8",
     "nuxt": "^3.21.2",
+    "nuxt-security": "^2.5.1",
     "vue": "^3.5.32",
     "vue-router": "^5.0.4"
   }
