@@ -4,7 +4,14 @@ export default defineNuxtConfig({
 
   devtools: { enabled: process.env.NODE_ENV !== 'production' },
 
-  modules: ['nuxt-security'],
+  modules: ['nuxt-security', 'nuxt-auth-utils'],
+
+  runtimeConfig: {
+    mongodbUri: process.env.MONGODB_URI || '',
+    session: {
+      password: process.env.NUXT_SESSION_PASSWORD || '',
+    },
+  },
 
   security: {
     headers: {
@@ -21,14 +28,14 @@ export default defineNuxtConfig({
       xXSSProtection: '1; mode=block',
     },
     requestSizeLimiter: {
-      maxRequestSizeInBytes: 5 * 1024 * 1024, // 5MB for file uploads
-      maxUploadFileRequestInBytes: 10 * 1024 * 1024, // 10MB
+      maxRequestSizeInBytes: 5 * 1024 * 1024,
+      maxUploadFileRequestInBytes: 10 * 1024 * 1024,
     },
     rateLimiter: {
       tokensPerInterval: 50,
-      interval: 60000, // 50 requests per minute
+      interval: 60000,
     },
-    xssValidator: false, // handled by Vue's template escaping
+    xssValidator: false,
   },
 
   routeRules: {
@@ -36,9 +43,13 @@ export default defineNuxtConfig({
       security: {
         rateLimiter: {
           tokensPerInterval: 30,
-          interval: 60000, // 30 API requests per minute
+          interval: 60000,
         },
       },
     },
+  },
+
+  nitro: {
+    plugins: ['~/server/plugins/mongodb.ts'],
   },
 })

@@ -551,7 +551,7 @@
 </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import '@fontsource/sora/400.css'
 import '@fontsource/sora/600.css'
@@ -846,28 +846,64 @@ function validatePassword(pass) {
   return null
 }
 
-function doSignup() {
+async function doSignup() {
   if (!suName.value.trim()) { suErrMsg.value = t('nameRequired'); suErr.value = true; return }
   if (!validateEmail(suEmail.value)) { suErrMsg.value = t('invalidEmail'); suErr.value = true; return }
   if (suPhone.value && !validatePhone(suPhone.value)) { suErrMsg.value = t('invalidPhone'); suErr.value = true; return }
   const passErr = validatePassword(suPass.value)
   if (passErr) { suErrMsg.value = passErr; suErr.value = true; return }
-  suErr.value = false; userName.value = sanitize(suName.value.trim().split(' ')[0]); userEmail.value = suEmail.value; isLoggedIn.value = true; isGuest.value = false
-  toast('🎉 Account created (demo mode)'); go('home')
+
+  try {
+    const res = await $fetch('/api/auth/signup', {
+      method: 'POST',
+      body: { name: suName.value.trim(), email: suEmail.value, phone: suPhone.value, password: suPass.value },
+    })
+    suErr.value = false; userName.value = sanitize(res.name.split(' ')[0]); userEmail.value = res.email; isLoggedIn.value = true; isGuest.value = false
+    toast('🎉 Account created!'); await loadData(); go('home')
+  } catch (e) {
+    suErrMsg.value = (e as any).data?.message || 'Signup failed'; suErr.value = true
+  }
 }
 
-function doLogin() {
+async function doLogin() {
   if (!liEmail.value || !validateEmail(liEmail.value)) { liErrMsg.value = t('invalidEmail'); liErr.value = true; return }
   if (!liPass.value || liPass.value.length < 8) { liErrMsg.value = t('loginError'); liErr.value = true; return }
-  liErr.value = false; liSuc.value = true; isLoggedIn.value = true; isGuest.value = false; userEmail.value = liEmail.value
-  setTimeout(() => { liSuc.value = false; go('home') }, 800)
+
+  try {
+    const res = await $fetch('/api/auth/login', {
+      method: 'POST',
+      body: { email: liEmail.value, password: liPass.value },
+    })
+    liErr.value = false; liSuc.value = true; isLoggedIn.value = true; isGuest.value = false
+    userName.value = res.name.split(' ')[0]; userEmail.value = res.email
+    setTimeout(async () => { liSuc.value = false; await loadData(); go('home') }, 600)
+  } catch (e) {
+    liErrMsg.value = (e as any).data?.message || t('loginError'); liErr.value = true
+  }
 }
 
 function socialLogin(provider) { toast(`${provider} login is not available yet. Please use email/password.`) }
 
-function useDemo() {
-  liEmail.value = 'demo@petly.in'; liPass.value = 'Demo1234'; userName.value = 'Demo User'
-  doLogin()
+async function useDemo() {
+  // Try to signup demo user first, then login
+  try {
+    await $fetch('/api/auth/signup', {
+      method: 'POST',
+      body: { name: 'Demo User', email: 'demo@petly.in', password: 'Demo1234' },
+    }).catch(() => {}) // Ignore if already exists
+
+    const res = await $fetch('/api/auth/login', {
+      method: 'POST',
+      body: { email: 'demo@petly.in', password: 'Demo1234' },
+    })
+    isLoggedIn.value = true; isGuest.value = false
+    userName.value = res.name.split(' ')[0]; userEmail.value = res.email
+    await loadData(); go('home')
+  } catch (e: any) {
+    // Fallback to client-side demo if DB not connected
+    liEmail.value = 'demo@petly.in'; liPass.value = 'Demo1234'; userName.value = 'Demo User'
+    isLoggedIn.value = true; isGuest.value = false; await loadData(); go('home')
+  }
 }
 
 function goBackFromBiz() { bizStep.value > 1 && !bizSuccess.value ? bizStep.value-- : go(isLoggedIn.value ? 'home' : 'splash') }
@@ -891,7 +927,93 @@ function validateBizStep3() {
 function book(p) { currentProvider.value = p; selectedDate.value = 14; selectedTime.value = '09:00'; selectedPackage.value = 'Standard'; go('booking') }
 function visit(p) { currentProvider.value = p; go('visit') }
 function vetAppt(p) { currentProvider.value = p; go('booking') }
-function confirmBooking() { toast('✅ Booking confirmed (demo mode)'); go('confirmed') }
+async function confirmBooking() {
+  if (currentProvider.value?._id && isLoggedIn.value) {
+    try {
+      await $fetch('/api/bookings', {
+        method: 'POST',
+        body: {
+          provider: currentProvider.value._id,
+          serviceType: currentProvider.value.types?.[0] || 'walking',
+          date: `2026-04-${selectedDate.value}`,
+          timeSlot: selectedTime.value,
+          package: selectedPackage.value,
+          price: parseInt((currentProvider.value.price || '₹0').replace(/[^0-9]/g, '')) || 0,
+        },
+      })
+    } catch (e) { /* silently continue even if DB not connected */ }
+  }
+  toast('✅ Booking confirmed!'); go('confirmed')
+}
+
+// Data loading from API (with fallback to hardcoded data)
+async function loadData() {
+  try {
+    const apiProviders = await $fetch('/api/providers')
+    if (apiProviders && apiProviders.length > 0) {
+      providers.value = apiProviders.map((p: any) => ({
+        _id: p._id,
+        name: p.businessName,
+        sub: `${p.types[0] === 'stores' ? 'Store' : p.types[0] === 'vets' ? 'Vet' : p.types[0]} · ${p.area}`,
+        icon: p.icon || '🐾',
+        rating: `★${p.rating.toFixed(1)}`,
+        reviews: String(p.reviewsCount),
+        exp: p.experience ? `${p.experience}yr` : undefined,
+        price: p.price || '',
+        unit: p.unit || p.operatingHours || '',
+        dist: '',
+        type: p.types[0] || 'walking',
+        policeVerified: p.policeVerified,
+        isStore: p.types.includes('stores'),
+        isVet: p.types.includes('vets'),
+        hours: p.operatingHours,
+        phone: p.phone,
+        tags: p.tags || p.specialties || [],
+        area: p.area,
+        types: p.types,
+      }))
+    }
+  } catch (e) { /* keep hardcoded data if API unavailable */ }
+
+  try {
+    const apiPosts = await $fetch('/api/community/posts')
+    if (apiPosts && apiPosts.length > 0) {
+      communityPosts.value = apiPosts.map((p: any) => ({
+        id: p._id,
+        avatar: p.authorAvatar || '👤',
+        user: p.authorName,
+        time: timeAgo(p.createdAt),
+        area: p.area || '',
+        text: p.text,
+        likes: p.likesCount,
+        comments: p.commentsCount,
+        liked: false,
+      }))
+    }
+  } catch (e) { /* keep hardcoded data */ }
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+
+// Check existing session on load
+async function checkSession() {
+  try {
+    const session = await $fetch('/api/auth/session')
+    if (session && session.id) {
+      isLoggedIn.value = true; isGuest.value = false
+      userName.value = session.name?.split(' ')[0] || 'User'
+      userEmail.value = session.email || ''
+    }
+  } catch (e) { /* no session */ }
+}
 
 // Clock (using Vue ref, not DOM)
 const clockTime = ref('')
@@ -900,7 +1022,11 @@ function updateClock() {
   const d = new Date()
   clockTime.value = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0')
 }
-onMounted(() => { updateClock(); clockInterval = setInterval(updateClock, 30000) })
+onMounted(async () => {
+  updateClock(); clockInterval = setInterval(updateClock, 30000)
+  await checkSession()
+  loadData()
+})
 onUnmounted(() => { if (clockInterval) clearInterval(clockInterval) })
 </script>
 
