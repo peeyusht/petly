@@ -92,6 +92,12 @@
     <div class="auth-subtitle">{{ t('signInToAccount') }}</div>
   </div>
   <div class="auth-body">
+    <!-- Demo Account Quick Login -->
+    <div @click="useDemo()" style="background:#F0F8FF;border:1.5px solid #B5D4F4;border-radius:13px;padding:13px 14px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .15s">
+      <div style="font-size:22px">🎮</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700;color:#1246A8">{{ t('useDemoAccount') }}</div><div style="font-size:11px;color:#6080B0;margin-top:1px">demo@petly.in / Demo1234</div></div>
+      <div style="font-size:14px;color:#1246A8">→</div>
+    </div>
     <div class="error-msg" :style="{display: liErr?'block':'none'}">{{ liErrMsg || t('loginError') }}</div>
     <div class="success-msg" :style="{display: liSuc?'block':'none'}">{{ t('loginSuccess') }}</div>
     <label class="inp-label">{{ t('emailOrPhone') }}</label>
@@ -705,7 +711,7 @@ const strings = {
     community:'Community', communitySub:'Pet owners in Greater Noida',
     callNearestVet:'Call the nearest emergency vet right now',
     notifications:'Notifications',
-    myPets:'My Pets', myBookings:'My Bookings', payments:'Payments', settings:'Settings', language:'Language', helpSupport:'Help & Support', signOut:'Sign Out', noEmailSet:'No email set',
+    myPets:'My Pets', myBookings:'My Bookings', payments:'Payments', settings:'Settings', language:'Language', helpSupport:'Help & Support', signOut:'Sign Out', noEmailSet:'No email set', useDemoAccount:'Use Demo Account',
     listBusiness:'List your business', joinAsPartner:'Join Petly as a verified partner — first 3 months free',
     threeMonthsFree:'3 months free', twentyFourHrApproval:'24hr approval', moreBookings:'More bookings',
     whatTypeBusiness:'What type of business?', selectAllApply:'Select all that apply to you',
@@ -772,7 +778,7 @@ const strings = {
     community:'समुदाय', communitySub:'ग्रेटर नोएडा के पेट मालिक',
     callNearestVet:'अभी नज़दीकी इमरजेंसी वेट को कॉल करें',
     notifications:'सूचनाएं',
-    myPets:'मेरे पेट', myBookings:'मेरी बुकिंग', payments:'भुगतान', settings:'सेटिंग्स', language:'भाषा', helpSupport:'सहायता', signOut:'साइन आउट', noEmailSet:'ईमेल सेट नहीं है',
+    myPets:'मेरे पेट', myBookings:'मेरी बुकिंग', payments:'भुगतान', settings:'सेटिंग्स', language:'भाषा', helpSupport:'सहायता', signOut:'साइन आउट', noEmailSet:'ईमेल सेट नहीं है', useDemoAccount:'डेमो अकाउंट इस्तेमाल करें',
     listBusiness:'बिज़नेस लिस्ट करें', joinAsPartner:'Petly पर सत्यापित पार्टनर बनें — 3 महीने मुफ़्त',
     threeMonthsFree:'3 महीने मुफ़्त', twentyFourHrApproval:'24 घंटे अप्रूवल', moreBookings:'अधिक बुकिंग',
     whatTypeBusiness:'बिज़नेस का प्रकार?', selectAllApply:'जो लागू हो वो चुनें',
@@ -858,6 +864,11 @@ function doLogin() {
 }
 
 function socialLogin(provider) { toast(`${provider} login is not available yet. Please use email/password.`) }
+
+function useDemo() {
+  liEmail.value = 'demo@petly.in'; liPass.value = 'Demo1234'; userName.value = 'Demo User'
+  doLogin()
+}
 
 function goBackFromBiz() { bizStep.value > 1 && !bizSuccess.value ? bizStep.value-- : go(isLoggedIn.value ? 'home' : 'splash') }
 
